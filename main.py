@@ -14,7 +14,7 @@ if __name__ == '__main__':
     min_episodes = 100
     max_episodes = 1000
 
-    # PoleCart V0 is terminated after up to 200 steps, V1 after 500
+    # Cartpole V0 is terminated after up to 200 steps, V1 after 500
     max_steps_per_episode = 200
 
     # Cartpole-v0 is considered solved if average reward is >= 195 over 100 consecutive trials
@@ -30,7 +30,7 @@ if __name__ == '__main__':
     # Reward array for statistic
     rewards = []
     episodes = []
-
+    rendered = []
     with tqdm.tqdm(range(max_episodes)) as t:
         for i in t:
             episode_reward = int(ai.train_step(gamma, max_steps_per_episode))
@@ -46,13 +46,19 @@ if __name__ == '__main__':
 
             # If True we got it!
             if running_reward > reward_threshold and i >= min_episodes:
+                ai.save_model('model.pickle')
                 break
-
+        
     plt.plot(rewards)
     plt.show()
 
     plt.plot(episodes)
     plt.show()
-    
-    ai.render_episode(max_steps_per_episode)
+
+
+    # ai.load_model('model.pickle')
+    rendered[0].save(str('game.gif'), save_all=True,
+                     append_images=rendered, loop=0, duration=20)
+
+    # ai.render_episode(max_steps_per_episode, sleep_sec=0.0025)
     # ai.episode_into_gif('game.gif')

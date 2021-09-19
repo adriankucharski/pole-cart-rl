@@ -1,4 +1,4 @@
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFont
 import gym
 import numpy as np
 from tensorflow.keras import layers
@@ -9,6 +9,7 @@ from tensorflow.keras.losses import Huber
 import tensorflow as tf
 import time
 import os
+import pickle
 from enum import Enum
 os.environ['CUDA_VISIBLE_DEVICES'] = '-1'  # Use CPU instead of GPU device
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # Show fatal error only
@@ -171,7 +172,7 @@ class CartPoleActorCritic(tf.keras.Model):
         self._env.reset()
         return self._tf_train_step(gamma, max_steps_per_episode)
 
-    def render_episode(self, max_steps: int, sleep_sec: float = 0.1):
+    def render_episode(self, max_steps: int, sleep_sec: float = 0.1, text: str = None) -> List[Image.Image]:
         """ Render episode with (trained) model """
 
         state = tf.constant(self._env.reset(), dtype=tf.float32)
@@ -183,7 +184,12 @@ class CartPoleActorCritic(tf.keras.Model):
 
             # Render screen and save it to array
             screen = self._env.render(mode='rgb_array')
-            images.append(Image.fromarray(screen))
+            frame = Image.fromarray(screen)
+            if text is not None:
+                drawer = ImageDraw.Draw(frame)
+                drawer.text((80, 80), text=text, fill=(0, 0, 0),
+                            font=ImageFont.truetype("arial.ttf", 25))
+            images.append(frame)
 
             state = tf.expand_dims(state, 0)
             action_probs, _ = self._forward(state)
@@ -197,8 +203,18 @@ class CartPoleActorCritic(tf.keras.Model):
 
         return images
 
-    def episode_into_gif(self, filename: Union[str, Path], max_steps: int = 200, sleep_sec: float = 0.1):
-        images = self.render_episode(max_steps, sleep_sec)
+    def episode_into_gif(self, filename: Union[str, Path], max_steps: int = 200, text: str = None):
+        images = self.render_episode(max_steps, 0.0, text)
         # loop=0: loop forever, duration=1: play each frame for 1ms
         images[0].save(str(filename), save_all=True,
-                       append_images=images, loop=0, duration=1)
+                       append_images=images, loop=0, duration=20)
+
+    def save_model(self, filename: Union[str, Path]):
+        with open(str(filename), 'wb') as file:
+            data = [self._common, self._actor, self._critic]
+            pickle.dump(data, file)
+
+    def load_model(self, filename: Union[str, Path]):
+        with open(str(filename), 'rb') as file:
+            data = pickle.load(file)
+            self._common, self._actor, self._critic = data
